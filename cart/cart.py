@@ -1,5 +1,6 @@
 import datetime
 import models
+from django.db.models import F
 
 CART_ID = 'CART-ID'
 
@@ -21,6 +22,23 @@ class Cart:
             cart = self.new(request)
         self.cart = cart
 
+
+    @staticmethod
+    def get(request):
+        cart_id = request.session.get(CART_ID)
+        if cart_id:
+            try:
+                cart_exists = models.Cart.objects.filter(id=cart_id, checked_out=False).count() or False
+            except models.Cart.DoesNotExist:
+                cart_exists = False
+        else:
+            cart_exists = False
+        if cart_exists:
+            return Cart(request)
+        else:
+            return None
+
+
     def __iter__(self):
         for item in self.cart.item_set.all():
             yield item
@@ -32,6 +50,7 @@ class Cart:
         return cart
 
     def add(self, product, unit_price, quantity=1):
+        assert self.cart is not None
         try:
             item = models.Item.objects.get(
                 cart=self.cart,
@@ -50,6 +69,7 @@ class Cart:
             item.save()
 
     def remove(self, product):
+        assert self.cart is not None
         try:
             item = models.Item.objects.get(
                 cart=self.cart,
@@ -58,9 +78,14 @@ class Cart:
         except models.Item.DoesNotExist:
             raise ItemDoesNotExist
         else:
-            item.delete()
+            if item.quantity == 1:
+                item.delete()
+            else:
+                item.quantity = F('quantity')-1
+                item.save()
 
     def update(self, product, quantity, unit_price=None):
+        assert self.cart is not None
         try:
             item = models.Item.objects.get(
                 cart=self.cart,
@@ -70,18 +95,20 @@ class Cart:
             raise ItemDoesNotExist
             
     def count(self):
+        assert self.cart is not None
         result = 0
         for item in self.cart.item_set.all():
             result += 1 * item.quantity
         return result
         
     def summary(self):
+        assert self.cart is not None
         result = 0
         for item in self.cart.item_set.all():
             result += item.total_price
         return result
 
     def clear(self):
+        assert self.cart is not None
         for item in self.cart.item_set.all():
             item.delete()
-
