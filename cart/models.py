@@ -12,6 +12,10 @@ class Cart(models.Model):
         verbose_name_plural = _('carts')
         ordering = ('-creation_date',)
 
+    def checkout(self):
+        self.checked_out = True
+        self.save()
+
     def __unicode__(self):
         return unicode(self.creation_date)
 
