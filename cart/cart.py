@@ -2,7 +2,7 @@ import datetime
 import models
 from django.db.models import F
 
-CART_ID = 'CART-ID'
+CART_ID = u'CART-ID'
 
 class ItemAlreadyExists(Exception):
     pass
@@ -81,8 +81,20 @@ class Cart:
             if item.quantity == 1:
                 item.delete()
             else:
-                item.quantity = F('quantity')-1
+                item.quantity = F(u'quantity')-1
                 item.save()
+
+    def remove_similar(self, product):
+        assert self.cart is not None
+        try:
+            item = models.Item.objects.get(
+                cart=self.cart,
+                product=product,
+            )
+        except models.Item.DoesNotExist:
+            raise ItemDoesNotExist
+        else:
+        item.delete()
 
     def update(self, product, quantity, unit_price=None):
         assert self.cart is not None
